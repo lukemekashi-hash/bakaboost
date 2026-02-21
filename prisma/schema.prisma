@@ -1,0 +1,100 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("BB_POSTGRES_URL")
+}
+
+model Donation {
+  id          String    @id @default(cuid())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  amount      Int       // Number of coffees
+  total       Float     // Total amount in dollars
+  name        String
+  message     String?
+  paymentType String    // "one-time" or "monthly"
+  payment     Payment?  // One-to-one relation with Payment
+}
+
+model Payment {
+  id          String    @id @default(cuid())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  email       String
+  cardNumber  String    // Note: In production, you should never store full card numbers
+  expiry      String
+  csc         String    // Note: In production, you should never store CSC
+  zipCode     String
+  firstName   String
+  lastName    String
+  mobile      String?
+  address     String    // Street address
+  unit        String?   // Apartment/Unit number (optional)
+  city        String
+  state       String
+  country     String
+  status      String    @default("pending") // pending, completed, failed
+  donationId  String    @unique // Foreign key to Donation
+  donation    Donation  @relation(fields: [donationId], references: [id])
+}
+
+// Note: In a production environment, you should:
+// 1. Never store full credit card numbers or CSC
+// 2. Use a payment processor like Stripe
+// 3. Only store payment tokens or last 4 digits of card
+// 4. Implement proper encryption for sensitive data
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  password      String?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
